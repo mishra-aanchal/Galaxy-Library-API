@@ -1,0 +1,24 @@
+{
+  "name": "galaxy-library-api",
+  "version": "1.0.0",
+  "description": "Galaxy Digital Library API — a multi-protocol backend for Postman v12 testing",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "seed": "node data/seed.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["api", "library", "grpc", "rest", "postman"],
+  "author": "Aanchal Mishra",
+  "license": "MIT",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.0",
+    "@grpc/proto-loader": "^0.7.10",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package galaxy.library;
+
+// ──────────────────────────────────────────────
+// Service: AssetDownload
+// Streams digital asset chunks (book covers, manuscripts) to the client.
+// Use this service in Postman v12 to demonstrate multi-protocol gRPC support.
+// ──────────────────────────────────────────────
+service AssetDownload {
+  // Server-side streaming: client sends one request, server streams asset chunks
+  rpc DownloadAsset (AssetRequest) returns (stream AssetChunk);
+
+  // Unary: Get metadata about a digital asset without downloading it
+  rpc GetAssetInfo (AssetRequest) returns (AssetInfo);
+
+  // Server-side streaming: Stream a live catalog update feed
+  rpc StreamCatalogUpdates (CatalogUpdateRequest) returns (stream CatalogEvent);
+}
+
+// ──────────────────────────────────────────────
+// Messages
+// ──────────────────────────────────────────────
+
+message AssetRequest {
+  string book_id    = 1; // UUID of the book
+  AssetType type    = 2; // Type of asset to download
+  int32 chunk_size  = 3; // Desired chunk size in bytes (default: 65536)
+}
+
+message AssetChunk {
+  bytes  data          = 1; // Raw binary chunk
+  int32  sequence      = 2; // Chunk sequence number (0-indexed)
+  int64  total_bytes   = 3; // Total file size in bytes
+  int64  bytes_sent    = 4; // Cumulative bytes sent so far
+  string checksum      = 5; // MD5 checksum of this chunk
+  bool   is_last_chunk = 6; // True when this is the final chunk
+}
+
+message AssetInfo {
+  string book_id      = 1;
+  string title        = 2;
+  AssetType type      = 3;
+  int64  file_size    = 4; // in bytes
+  string file_format  = 5; // epub, pdf, mobi, azw3
+  string cover_url    = 6;
+  string checksum     = 7; // MD5 of complete file
+  int64  last_updated = 8; // Unix timestamp
+}
+
+message CatalogUpdateRequest {
+  string since_timestamp = 1; // ISO8601 — stream events since this time
+  repeated string genres = 2; // Filter events to specific genres
+}
+
+message CatalogEvent {
+  EventType event_type = 1;
+  string    book_id    = 2;
+  string    title      = 3;
+  string    timestamp  = 4; // ISO8601
+  string    details    = 5; // Human-readable description of what changed
+}
+
+// ──────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────
+
+enum AssetType {
+  ASSET_TYPE_UNSPECIFIED = 0;
+  COVER_IMAGE            = 1; // High-resolution book cover (JPEG/PNG)
+  FULL_MANUSCRIPT        = 2; // Complete digital book file (epub/pdf/mobi)
+  SAMPLE_CHAPTER         = 3; // First chapter preview
+  AUDIO_BOOK             = 4; // Audio narration file (MP3)
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  BOOK_ADDED             = 1;
+  BOOK_UPDATED           = 2;
+  BOOK_REMOVED           = 3;
+  BOOK_AVAILABILITY      = 4; // Available/unavailable toggle
+}

@@ -1,0 +1,841 @@
+openapi: 3.0.3
+info:
+  title: Galaxy Digital Library API
+  description: |
+    A comprehensive, multi-protocol Digital Library API built to showcase Postman v12 features.
+
+    **Authentication:**
+    - `x-api-key`: Required for Books and Authors endpoints. Store in Postman **Local Vault**.
+    - `Authorization: Bearer <token>`: Required for Loans endpoints. Store in Postman **Local Vault**.
+
+    **Known Debug Scenario:**
+    - `PUT /api/books/{bookId}/metadata` requires a non-standard header `X-Library-Source`.
+      This is intentionally undocumented here to demonstrate AI-assisted debugging in Postman.
+  version: 1.0.0
+  contact:
+    name: Galaxy Library Team
+    email: api@galaxylibrary.io
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local Development Server
+
+tags:
+  - name: Books
+    description: Manage the digital book catalog
+  - name: Authors
+    description: Manage author profiles
+  - name: Loans
+    description: Manage book loan records
+  - name: Search
+    description: Full-text and filtered library search
+  - name: Health
+    description: System health and diagnostics
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  # ──────────────────────────────────────────────
+  # BOOKS
+  # ──────────────────────────────────────────────
+  /api/books:
+    get:
+      tags: [Books]
+      summary: List all books
+      description: Returns a paginated list of books. Supports complex query filtering.
+      operationId: listBooks
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/genre'
+        - $ref: '#/components/parameters/available'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: language
+          in: query
+          schema:
+            type: string
+            example: en
+        - name: minRating
+          in: query
+          description: Minimum community rating (1.0 – 5.0)
+          schema:
+            type: number
+            format: float
+            minimum: 1.0
+            maximum: 5.0
+      responses:
+        '200':
+          description: A paginated list of books
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Books]
+      summary: Add a new book
+      operationId: createBook
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookInput'
+      responses:
+        '201':
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/books/{bookId}:
+    parameters:
+      - $ref: '#/components/parameters/bookId'
+    get:
+      tags: [Books]
+      summary: Get a book by ID
+      operationId: getBookById
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [Books]
+      summary: Update a book
+      operationId: updateBook
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookInput'
+      responses:
+        '200':
+          description: Book updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Books]
+      summary: Delete a book
+      operationId: deleteBook
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '204':
+          description: Book deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/books/{bookId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/bookId'
+    put:
+      tags: [Books]
+      summary: Update book metadata
+      description: |
+        Updates extended metadata for a book.
+
+        > ⚠️ **Debug Scenario**: This endpoint has a hidden requirement not documented here.
+        > Use Postman's Agent Mode if you hit a `400` error to diagnose the issue.
+      operationId: updateBookMetadata
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookMetadataInput'
+      responses:
+        '200':
+          description: Metadata updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ──────────────────────────────────────────────
+  # AUTHORS
+  # ──────────────────────────────────────────────
+  /api/authors:
+    get:
+      tags: [Authors]
+      summary: List all authors
+      operationId: listAuthors
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: A list of authors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Authors]
+      summary: Create a new author
+      operationId: createAuthor
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorInput'
+      responses:
+        '201':
+          description: Author created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/authors/{authorId}:
+    parameters:
+      - $ref: '#/components/parameters/authorId'
+    get:
+      tags: [Authors]
+      summary: Get author by ID
+      operationId: getAuthorById
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Author details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Authors]
+      summary: Update an author
+      operationId: updateAuthor
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorInput'
+      responses:
+        '200':
+          description: Author updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Authors]
+      summary: Delete an author
+      operationId: deleteAuthor
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '204':
+          description: Author deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ──────────────────────────────────────────────
+  # LOANS
+  # ──────────────────────────────────────────────
+  /api/loans:
+    get:
+      tags: [Loans]
+      summary: List all active loans
+      operationId: listLoans
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, returned, overdue]
+      responses:
+        '200':
+          description: List of loans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Loans]
+      summary: Create a loan
+      operationId: createLoan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoanInput'
+      responses:
+        '201':
+          description: Loan created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Book already on loan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/loans/{loanId}:
+    parameters:
+      - $ref: '#/components/parameters/loanId'
+    get:
+      tags: [Loans]
+      summary: Get a loan by ID
+      operationId: getLoanById
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Loan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Loans]
+      summary: Return a book (close a loan)
+      operationId: returnLoan
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Loan closed / book returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ──────────────────────────────────────────────
+  # SEARCH
+  # ──────────────────────────────────────────────
+  /api/search:
+    get:
+      tags: [Search]
+      summary: Full-text search across the library
+      description: |
+        Performs a full-text search across books and authors.
+
+        > ⚠️ **Performance Testing Note**: This endpoint simulates latency under load.
+        > Use Postman's Local Performance Testing to benchmark response times.
+      operationId: searchLibrary
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: The search query string
+          schema:
+            type: string
+            example: hitchhiker galaxy
+        - name: type
+          in: query
+          description: Limit search to a specific entity type
+          schema:
+            type: string
+            enum: [books, authors, all]
+            default: all
+        - $ref: '#/components/parameters/genre'
+        - $ref: '#/components/parameters/available'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+# ──────────────────────────────────────────────
+# COMPONENTS
+# ──────────────────────────────────────────────
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: "Store this in Postman's **Local Vault** as `galaxy_api_key`."
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Store this token in Postman's **Local Vault** as `galaxy_bearer_token`."
+
+  parameters:
+    bookId:
+      name: bookId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    authorId:
+      name: authorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    loanId:
+      name: loanId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    genre:
+      name: genre
+      in: query
+      description: Filter by genre (e.g. sci-fi, fantasy, mystery)
+      schema:
+        type: string
+        example: sci-fi
+    available:
+      name: available
+      in: query
+      description: Filter by availability
+      schema:
+        type: boolean
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+
+  schemas:
+    # ── Core Entities ──────────────────────────
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "a3f4e2d1-0000-0000-0000-000000000001"
+        title:
+          type: string
+          example: "The Hitchhiker's Guide to the Galaxy"
+        isbn:
+          type: string
+          example: "978-0-345-39180-3"
+        genre:
+          type: array
+          items:
+            type: string
+          example: ["sci-fi", "comedy"]
+        available:
+          type: boolean
+          example: true
+        publishedYear:
+          type: integer
+          example: 1979
+        language:
+          type: string
+          example: "en"
+        rating:
+          type: number
+          format: float
+          example: 4.8
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorSummary'
+        metadata:
+          $ref: '#/components/schemas/BookMetadata'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    BookInput:
+      type: object
+      required: [title, isbn, genre, publishedYear]
+      properties:
+        title:
+          type: string
+        isbn:
+          type: string
+        genre:
+          type: array
+          items:
+            type: string
+        available:
+          type: boolean
+          default: true
+        publishedYear:
+          type: integer
+        language:
+          type: string
+          default: en
+        rating:
+          type: number
+          format: float
+        authorIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        metadata:
+          $ref: '#/components/schemas/BookMetadataInput'
+
+    BookMetadata:
+      type: object
+      description: Rich metadata about a book, including cover art and digital asset info.
+      properties:
+        coverUrl:
+          type: string
+          format: uri
+          example: "https://covers.galaxylibrary.io/hitchhiker.jpg"
+        fileSize:
+          type: integer
+          description: Size of digital asset in bytes
+          example: 2048000
+        fileFormat:
+          type: string
+          enum: [epub, pdf, mobi, azw3]
+          example: epub
+        synopsis:
+          type: string
+          example: "Seconds before the Earth is demolished for a bypass..."
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["humor", "space-travel", "towels"]
+        source:
+          type: string
+          description: System of origin for this record (internal field, used for provenance tracking)
+          example: "GALAXY-MAIN-CATALOG"
+
+    BookMetadataInput:
+      type: object
+      properties:
+        coverUrl:
+          type: string
+          format: uri
+        fileSize:
+          type: integer
+        fileFormat:
+          type: string
+          enum: [epub, pdf, mobi, azw3]
+        synopsis:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    Author:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          example: "Douglas Adams"
+        bio:
+          type: string
+          example: "English author, screenwriter, essayist, humorist, satirist and dramatist."
+        birthYear:
+          type: integer
+          example: 1952
+        nationality:
+          type: string
+          example: "British"
+        books:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: IDs of books by this author
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    AuthorSummary:
+      type: object
+      description: Lightweight author reference embedded in a Book object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    AuthorInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        bio:
+          type: string
+        birthYear:
+          type: integer
+        nationality:
+          type: string
+
+    Loan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        bookId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          example: "patron-42"
+        status:
+          type: string
+          enum: [active, returned, overdue]
+          example: active
+        loanedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        dueDate:
+          type: string
+          format: date-time
+        returnedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    LoanInput:
+      type: object
+      required: [bookId, userId, dueDate]
+      properties:
+        bookId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+
+    # ── List / Pagination Wrappers ─────────────
+    BookListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    AuthorListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    LoanListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Loan'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        latencyMs:
+          type: integer
+          description: Server-side processing time in ms (for performance testing transparency)
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: 1.0.0
+        uptime:
+          type: number
+          example: 120.5
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        statusCode:
+          type: integer
+
+  responses:
+    Unauthorized:
+      description: Authentication credentials missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: UNAUTHORIZED
+            message: "Valid x-api-key header or Bearer token is required."
+            statusCode: 401
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: NOT_FOUND
+            message: "The requested resource was not found."
+            statusCode: 404
